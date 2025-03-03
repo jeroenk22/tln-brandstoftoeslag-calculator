@@ -9,6 +9,7 @@ import {
   TooltipContent,
 } from "./Tooltip";
 import { ClipboardCopy } from "lucide-react";
+import { calculateSurchargePercentage } from "../utils/calculateUtils";
 
 const FuelSurchargeCalculator: React.FC = () => {
   const [dieselPrice, setDieselPrice] = useState<string>("");
@@ -18,27 +19,39 @@ const FuelSurchargeCalculator: React.FC = () => {
   );
   const [tooltipVisible, setTooltipVisible] = useState<boolean>(false);
 
-  const basePrice = 1.5236;
-  const priceStep = 0.028;
-
   const calculateSurcharge = () => {
-    const priceDiff = parseFloat(dieselPrice) - basePrice;
-    const steps = priceDiff / priceStep;
-    const surchargePercentage = Math.round(steps * 100) / 100;
-    setSurcharge(surchargePercentage);
+    if (dieselPrice.trim() !== "") {
+      const surchargePercentage = calculateSurchargePercentage(dieselPrice);
+      setSurcharge(surchargePercentage);
+    }
   };
 
   const copyToClipboard = async () => {
     if (surcharge !== null) {
       try {
-        await navigator.clipboard.writeText(`${surcharge.toFixed(2)}%`);
-        setTooltipText("Percentage gekopieerd naar klembord");
+        // Zet de toeslag om naar een string en vervang de punt door een komma
+        const formattedSurcharge = surcharge.toFixed(2).replace(".", ",");
+        await navigator.clipboard.writeText(formattedSurcharge);
+        setTooltipText("Gekopieerd!");
       } catch (error) {
         setTooltipText("Kopiëren mislukt");
       }
-      setTooltipVisible(false);
-      setTimeout(() => setTooltipVisible(true), 100);
-      setTimeout(() => setTooltipVisible(false), 3000);
+
+      // Maak de tooltip zichtbaar
+      setTooltipVisible(true);
+
+      // Zet de tooltip na 1,5 seconden weer uit
+      setTimeout(() => setTooltipVisible(false), 1000);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setDieselPrice(value);
+
+    // Reset de surcharge wanneer het veld leeg is
+    if (value.trim() === "") {
+      setSurcharge(null);
     }
   };
 
@@ -48,7 +61,7 @@ const FuelSurchargeCalculator: React.FC = () => {
         <Card className="max-w-sm w-full">
           <CardContent>
             <h2 className="text-xl font-semibold mb-4">
-              Brandstoftoeslag Calculator
+              TLN Brandstoftoeslag Calculator
             </h2>
             <p className="mb-4 text-sm">
               De basisprijs van diesel was op 1 februari 2022 € 1,5236 per liter
@@ -59,14 +72,14 @@ const FuelSurchargeCalculator: React.FC = () => {
               type="number"
               placeholder="Voer dieselprijs in (€)"
               value={dieselPrice}
-              onChange={(e) => setDieselPrice(e.target.value)}
+              onChange={handleInputChange}
               className="mb-4"
               step="0.0001"
             />
             <Button onClick={calculateSurcharge} className="w-full mb-4">
               Bereken Toeslag
             </Button>
-            {surcharge !== null && (
+            {surcharge !== null && dieselPrice.trim() !== "" && (
               <div className="text-lg font-medium flex items-center">
                 <p className="mr-2">
                   Brandstoftoeslag: {surcharge.toFixed(2)}%
@@ -81,11 +94,13 @@ const FuelSurchargeCalculator: React.FC = () => {
                       <ClipboardCopy className="w-5 h-5 text-gray-600 hover:text-black" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>{tooltipText}</TooltipContent>
+                  {tooltipVisible && (
+                    <TooltipContent>{tooltipText}</TooltipContent>
+                  )}
                 </Tooltip>
               </div>
             )}
-            {surcharge !== null && (
+            {surcharge !== null && dieselPrice.trim() !== "" && (
               <p className="text-sm mt-2">
                 Berekening: (({dieselPrice} - 1.5236) / 0.028) * 1% ={" "}
                 {surcharge.toFixed(2)}%
